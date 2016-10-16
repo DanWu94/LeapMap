@@ -41,7 +41,7 @@ public class MapView extends JFrame{
 	/**
 	 * zoom
 	 */
-    private static int zoom;
+    private static double zoom;
 	/**
 	 * minimum latitude
 	 */
@@ -51,9 +51,13 @@ public class MapView extends JFrame{
 	 */
 	public static final double MAX_LAT = 89.0;
 	/**
+	 * latitude span
+	 */
+	private static double latSpan;
+	/**
 	 * latitude increase step
 	 */
-	public static final double LAT_STEP = 1.0;
+	private static double latStep;
 	/**
 	 * latitude
 	 */
@@ -67,9 +71,13 @@ public class MapView extends JFrame{
 	 */
 	public static final double MAX_LNG = 180.0;
 	/**
+	 * longitude span
+	 */
+	private static double lngSpan;
+	/**
 	 * longitude increase step
 	 */
-	public static final double LNG_STEP = 20.0;
+	private static double lngStep;
 	/**
 	 * longitude
 	 */
@@ -82,20 +90,45 @@ public class MapView extends JFrame{
 	
 	/**
 	 * Zoom in.
+	 * @param rate zoom rate
 	 */
-	public void zoomIn() {
+	public void zoomIn(double rate) {
 		if (zoom < MAX_ZOOM) {
-            browser.executeJavaScript("map.setZoom(" + ++zoom + ")");
+			zoom += rate;
+            browser.executeJavaScript("map.setZoom(" + (int)Math.round(zoom) + ")");    
+            updateLatLngStep();
         }
 	}
 	
 	/**
-	 * Zoom out.
+	 * zoom slow rate
 	 */
-	public void zoomOut() {
+	public static final double SLOW_ZOOM_RATE = 0.05;
+	
+	/**
+	 * Zoom in slowly.
+	 */
+	public void zoomInSlow() {
+		zoomIn(SLOW_ZOOM_RATE);
+	}
+	
+	/**
+	 * Zoom out.
+	 * @param rate zoom rate
+	 */
+	public void zoomOut(double rate) {
 		if (zoom > MIN_ZOOM) {
-            browser.executeJavaScript("map.setZoom(" + --zoom + ")");
+			zoom -= rate;
+            browser.executeJavaScript("map.setZoom(" + (int)Math.round(zoom) + ")");
+            updateLatLngStep();
         }
+	}
+	
+	/**
+	 * Zoom out slowly.
+	 */
+	public void zoomOutSlow() {
+		zoomOut(SLOW_ZOOM_RATE);
 	}
 	
 	/**
@@ -110,7 +143,8 @@ public class MapView extends JFrame{
 	 */
 	public void latNorth() {
 		if (lat < MAX_LAT) {
-			lat += LAT_STEP;
+			updateLatLngStep();
+			lat += latStep;
 			if (lat > MAX_LAT) lat = MAX_LAT;
 			updateLatLng();
         }
@@ -121,7 +155,8 @@ public class MapView extends JFrame{
 	 */
 	public void latSouth() {
 		if (lat > MIN_LAT) {
-			lat -= LAT_STEP;
+			updateLatLngStep();
+			lat -= latStep;
 			if (lat < MIN_LAT) lat = MIN_LAT;
 			updateLatLng();
 		}
@@ -131,7 +166,8 @@ public class MapView extends JFrame{
 	 * Move longitude towards East.
 	 */
 	public void lngEast() {
-		lng += LNG_STEP;
+		updateLatLngStep();
+		lng += lngStep;
 		if (lng > MAX_LNG) lng = MIN_LNG - MAX_LNG + lng;
 		updateLatLng();
 	}
@@ -140,9 +176,20 @@ public class MapView extends JFrame{
 	 * Move longitude towards West.
 	 */
 	public void lngWest() {
-		lng -= LNG_STEP;
+		updateLatLngStep();
+		lng -= lngStep;
 		if (lng < MIN_LNG) lng = -MIN_LNG + MAX_LNG + lng;
 		updateLatLng();
+	}
+	
+	/**
+	 * Update latitude step and longitude step using their spans.
+	 */
+	private void updateLatLngStep() {
+		latSpan = browser.executeJavaScriptAndReturnValue("map.getBounds().toSpan().lat()").getNumberValue();
+    	lngSpan = browser.executeJavaScriptAndReturnValue("map.getBounds().toSpan().lng()").getNumberValue();
+    	latStep = latSpan / 15.0;
+    	lngStep = lngSpan / 15.0;
 	}
 	
 	/**
@@ -162,7 +209,7 @@ public class MapView extends JFrame{
         btnZoomIn.addActionListener(new ActionListener() {
         	@Override
         	public void actionPerformed(ActionEvent e) {
-                zoomIn();            
+                zoomIn(1);
             }
 
         });
@@ -171,7 +218,7 @@ public class MapView extends JFrame{
         btnZoomOut.addActionListener(new ActionListener() {
         	@Override
         	public void actionPerformed(ActionEvent e) {
-                zoomOut();            
+                zoomOut(1);
             }
 
         });
@@ -231,7 +278,6 @@ public class MapView extends JFrame{
                 	zoom = (int)browser.executeJavaScriptAndReturnValue("map.getZoom()").getNumberValue();
                 	lat = browser.executeJavaScriptAndReturnValue("map.getCenter().lat()").getNumberValue();
                 	lng = browser.executeJavaScriptAndReturnValue("map.getCenter().lng()").getNumberValue();
-                	
                 }
             }
         });
@@ -243,6 +289,7 @@ public class MapView extends JFrame{
 	 */
 	public void start() {
 		setVisible(true);
+		updateLatLngStep();
 	}
 	
 	/**
@@ -252,23 +299,5 @@ public class MapView extends JFrame{
 	public MapView() throws IOException {
 		initGUI();
 	}
-	
-	/**
-	 * Main function.
-	 * @param args
-	 * @throws IOException
-	 */
-	public static void main(String[] args) throws IOException {
-		EventQueue.invokeLater(new Runnable() {
-			public void run() {
-				try {
-					MapView view = new MapView();
-					view.start();
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
-		}); 
-    }
     
 } 
